@@ -1,0 +1,9 @@
+[
+	{
+		"id": "ordering",
+		"type": "enum",
+		"label": "Episode Ordering",
+		"values": [ "Newest First", "Oldest First" ],
+		"default": "Newest First"
+	}
+]

@@ -1,0 +1,317 @@
+####################################################################################################
+# Autor:    Pradeep Kadambar <a href="mailto:pradeep.kadambar@rsa.com">Pradeep Kadambar</a>
+# Date:     4/14/2013
+# About:    This plugin allows contents from SonyLIV.com to be viewed over Plex clients.
+#
+# Version:  0.12
+#
+# This is free and unencumbered software released into the public domain.
+# 
+# Anyone is free to copy, modify, publish, use, compile, sell, or
+# distribute this software, either in source code form or as a compiled
+# binary, for any purpose, commercial or non-commercial, and by any
+# means.
+# 
+# In jurisdictions that recognize copyright laws, the author or authors
+# of this software dedicate any and all copyright interest in the
+# software to the public domain. We make this dedication for the benefit
+# of the public at large and to the detriment of our heirs and
+# successors. We intend this dedication to be an overt act of
+# relinquishment in perpetuity of all present and future rights to this
+# software under copyright law.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+# IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+# OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+# ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+# OTHER DEALINGS IN THE SOFTWARE.
+# 
+####################################################################################################
+from datetime import datetime
+
+NAME = "Sony LIV"
+COUNTRY = 'India'
+ICON = "icon-default.png"
+ART = "art-default.png"
+
+LIVE_URL = "http://www.sonyliv.com/"
+EPISODE_LINK = "http://www.sonyliv.com/view-all/more-episodes/%s/page/%i"
+AMF_URL = 'http://c.brightcove.com/services/messagebroker/amf'
+
+NOT_AVAILABLE = "- NA -"
+
+RE_TITLE = Regex('^(.+?)\s*\W*Ep')
+
+HTTP_HEADERS = {'User-Agent':'Mozilla/5.0 (iPad; CPU OS 6_0_1 like Mac OS X) AppleWebKit/536.26 (KHTML, like Gecko) Version/6.0 Mobile/10A523 Safari/8536.25'}
+RE_JSON = Regex('var experienceJSON = ({.+});')
+
+####################################################################################################
+def MetadataObjectForURL(url): 
+    page = HTML.ElementFromURL(url)
+ 
+    showName =  page.xpath("//div[@class='page-title mrg-b']/div/div/div/h2/text()")[0].lstrip().rstrip()
+    episodeName = page.xpath("//div[@id='section']/p[@class='text20 white-color']/text()")[0].lstrip().rstrip()
+    
+    Log("showName" + showName)
+    Log("episodeName" + episodeName)
+    
+    try:
+        episodeSummary = page.xpath("//div[@id='block-sonyliv-video-description']/div/p/text()")[0].lstrip().rstrip()   
+    except:
+        episodeSummary = None    
+    
+    try:
+        episodeName = RE_TITLE.findall(episodeName)[0]
+        Log("episodeName after REGEX = " + episodeName)
+    except: pass            
+    
+    episodeNumber = page.xpath("//div[@class='fl opt-links segoe-Semilight']/span/text()")[0].replace('Ep #','').replace('|','').lstrip().rstrip()
+
+    Log("episodeNumber = " + episodeNumber) 
+            
+    try:
+        episodeAirDate = page.xpath("//div[@class='fl opt-links segoe-Semilight']/span/span/text()")[0].lstrip().rstrip()
+        Log("episodeAirDate = " + episodeAirDate)   
+        episodeAirDate = Datetime.ParseDate(episodeAirDate).date()
+    except:
+        episodeAirDate = None
+
+    Log("episodeAirDate = " + str(episodeAirDate))   
+        
+    try:
+        episodeDuration = page.xpath("//div[@class='fl opt-links segoe-Semilight']/p/text()")[0].lstrip().rstrip()
+        episodeDuration = Datetime.MillisecondsFromString(episodeDuration)
+    except:
+        episodeDuration = None    
+    
+    Log("episodeDuration = " + str(episodeDuration))   
+    
+    data = GetVideoData(url)
+    
+    videoThumb = data['videoStillURL']
+    
+    return EpisodeObject(
+                title = episodeName,
+                summary = episodeSummary,
+                duration = episodeDuration,
+                originally_available_at = episodeAirDate,
+                thumb = Resource.ContentsOfURLWithFallback(videoThumb),
+                index = int(episodeNumber) if episodeNumber != '' else None,
+                season = 1,
+                show = showName
+                )
+
+####################################################################################################
+def MediaObjectsForURL(url):
+
+    return [
+            MediaObject(
+                        parts =  [
+                                  PartObject(key = Callback(PlayVideo, url = url, selectedBitrate = 108)),
+                                  ],                
+                        container = Container.MP4,
+                        video_resolution = 212,
+                        bitrate = 108,
+                        video_codec = VideoCodec.H264,
+                        audio_codec = AudioCodec.AAC,
+                        audio_channels = 2,
+                        optimized_for_streaming = True
+                        ),
+            MediaObject(
+                        parts =  [
+                                  PartObject(key = Callback(PlayVideo, url = url, selectedBitrate = 204)),
+                                  ],                
+                        container = Container.MP4,
+                        video_resolution = 266,
+                        bitrate = 204,
+                        video_codec = VideoCodec.H264,
+                        audio_codec = AudioCodec.AAC,
+                        audio_channels = 2,
+                        optimized_for_streaming = True
+                        ),
+            MediaObject(
+                        parts =  [
+                                  PartObject(key = Callback(PlayVideo, url = url, selectedBitrate = 368)),
+                                  ],                
+                        container = Container.MP4,
+                        video_resolution = 426,
+                        bitrate = 368,
+                        video_codec = VideoCodec.H264,
+                        audio_codec = AudioCodec.AAC,
+                        audio_channels = 2,
+                        optimized_for_streaming = True
+                        ),
+            MediaObject(
+                        parts =  [
+                                  PartObject(key = Callback(PlayVideo, url = url, selectedBitrate = 922)),
+                                  ],                
+                        container = Container.MP4,
+                        video_resolution = 426,
+                        bitrate = 922,
+                        video_codec = VideoCodec.H264,
+                        audio_codec = AudioCodec.AAC,
+                        audio_channels = 2,
+                        optimized_for_streaming = True
+                        ),            
+            MediaObject(
+                        parts =  [
+                                  PartObject(key = Callback(PlayVideo, url = url, selectedBitrate = 1257)),
+                                  ],                
+                        container = Container.MP4,
+                        video_resolution = 512,
+                        bitrate = 1257,                        
+                        video_codec = VideoCodec.H264,
+                        audio_codec = AudioCodec.AAC,
+                        audio_channels = 2,
+                        optimized_for_streaming = True
+                        )                                    
+            ]
+
+####################################################################################################
+def PlayVideo(url, selectedBitrate = 922):
+    data = GetVideoData(url)    
+    videoURL = '' 
+    
+    Log("Selected bitrate = " + str(selectedBitrate))
+    renditions = data['renditions']
+    streams = GetStreamInfo(renditions)
+    Log("Available bitrates ")
+    for bitrate in streams:
+        Log("Bitrate %i url %s", bitrate, streams[bitrate])
+    
+    selectedBitrate = min(streams.keys(), key=lambda x:abs(x-selectedBitrate))
+    Log("Selected bitrate " + str(selectedBitrate))
+    videoURL = streams[selectedBitrate]
+    Log("Video URL " + videoURL)
+    
+    if videoURL == '':
+        raise Ex.MediaNotAvailable     
+        
+    return Redirect(videoURL)
+
+
+####################################################################################################
+def GetStreamInfo(renditions):
+    bitrates = []
+    streams = {}  
+
+    for rendition in renditions:
+        bitrate = int(float(rendition['encodingRate'])/1000)
+        url = rendition['defaultURL']
+        streams[bitrate] = url
+        
+    return streams
+
+####################################################################################################
+def GetVideoData(url, isAMF = False):
+    page = HTML.ElementFromURL(url)
+    #Log(HTML.StringFromElement(page))
+        
+    data = page.xpath('//object[@class="BrightcoveExperience"]')
+
+    if len(data) < 1:
+        return None
+    
+    Log("Found BrightcoveExperience")
+
+    try:
+        playerID = data[0].xpath('./param[@name="playerID"]')[0].get('value')
+        Log("playerID = " + playerID)        
+    except:
+        raise Ex.MediaNotAvailable
+    
+    try:
+        videoPlayer = data[0].xpath('./param[@name="@videoPlayer"]')[0].get('value')
+        Log("videoPlayer = " + videoPlayer)        
+    except:
+        raise Ex.MediaNotAvailable
+    
+    try:
+        playerKey = data[0].xpath('./param[@name="playerKey"]')[0].get('value')
+        Log("playerKey = " + playerKey)        
+    except: pass  
+
+    if videoPlayer == '':
+        raise Ex.MediaGeoblocked
+    
+    if isAMF:
+        start_time = datetime.now()
+        response = GetMediaUsingAMF(url=url, playerID=playerID, videoPlayer=videoPlayer)
+        timeTaken = datetime.now() - start_time
+        Log("AMF time taken " + str(timeTaken))          
+    else:
+        start_time = datetime.now()
+        response = GetMediaJSON(url, playerKey, videoPlayer)
+        timeTaken = datetime.now() - start_time
+        Log("JSON time taken " + str(timeTaken))    
+
+    return response
+
+####################################################################################################
+def GetMediaUsingAMF(url=None, playerID=None, playerKey=None, videoPlayer=None):
+    Log("Get media using AMF " + url)        
+    endpoint = AMF_URL
+    if playerKey:
+        endpoint += '?playerKey=%s' % playerKey
+
+    client = AMF.RemotingService(url=endpoint, user_agent='', amf_version=3)
+    service = client.getService('com.brightcove.experience.ExperienceRuntimeFacade')
+
+    AMF.RegisterClass(ContentOverride, 'com.brightcove.experience.ContentOverride')
+    AMF.RegisterClass(ViewerExperienceRequest, 'com.brightcove.experience.ViewerExperienceRequest')
+
+    video_obj = ContentOverride(videoPlayer)
+    experience = ViewerExperienceRequest(url, playerID, playerKey, video_obj)
+    
+    try:
+        result = service.getDataForExperience('', experience)
+        #Log(result.items())
+        return result['programmedContent']['videoPlayer']['mediaDTO']
+    except:
+        Log('Exception in AMF Request')
+        raise Ex.MediaGeoblocked
+
+####################################################################################################
+class ContentOverride(object):
+    def __init__ (self, videoPlayer=None):
+        self.contentType = int(0)
+        self.contentIds = None
+        self.target = 'videoPlayer'
+        self.contentId = int(videoPlayer)
+        self.featuredRefId = None
+        self.contentRefIds = None
+        self.featuredId = float('nan')
+        self.contentRefId = None
+
+####################################################################################################
+class ViewerExperienceRequest(object):
+    def __init__ (self, url=None, playerID=None, playerKey=None, video_obj=None):
+        self.experienceId = int(playerID)
+        self.playerKey = playerKey
+        self.contentOverrides = []
+        self.contentOverrides.append(video_obj)
+        self.TTLToken = ''
+        self.URL = url
+        self.deliveryType = float('nan')
+
+####################################################################################################
+def GetMediaJSON(url, playerKey, videoPlayer):
+    Log("Get media using JSON " + url)        
+    dataURL = 'http://c.brightcove.com/services/viewer/htmlFederated?playerKey=%s&dynamicStreaming=true&%%40videoPlayer=%s' % (playerKey, videoPlayer)
+    jsonObj = GetJSON(dataURL)    
+    return jsonObj['data']['programmedContent']['videoPlayer']['mediaDTO']
+
+def GetJSON(url):
+    data = HTTP.Request(url, headers=HTTP_HEADERS).content
+    json = RE_JSON.search(data)
+
+    if json:
+        json_obj = JSON.ObjectFromString(json.group(1))
+        if json_obj['success'] == True:
+            return json_obj
+        else:
+            raise Ex.MediaNotAvailable
+    else:
+        raise Ex.MediaNotAvailable
